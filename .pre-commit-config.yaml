@@ -1,0 +1,32 @@
+# Local hooks only: nothing is fetched from a hook repository (SDD AD-20, I-17). Each hook runs
+# through `uv run` from the locked environment. The scan hook also runs gitleaks if it is installed (QA-74).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check --fix --force-exclude
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --force-exclude
+        language: system
+        types: [python]
+      - id: validate-profile
+        name: validate changed concepts
+        entry: uv run python scripts/validate_profile.py --changed
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: build-indexes-check
+        name: check generated indexes
+        entry: uv run python scripts/build_indexes.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: scan
+        name: scan for markers and secrets
+        entry: uv run python scripts/scan.py --gitleaks
+        language: system
+        types: [text]

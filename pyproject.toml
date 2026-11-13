@@ -1,0 +1,201 @@
+[project]
+name = "p3-scratch-github"
+version = "0.1.0a0"
+description = "Synthetic library for the P3 site and release rehearsals."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+dependencies = []
+
+[dependency-groups]
+validate = [
+    "jsonschema>=4.26,<5",
+    "markdown-it-py>=4.2,<5",
+    "mdit-py-plugins>=0.6,<1",
+    "pyyaml>=6,<7",
+    "ruamel.yaml>=0.18,<1",
+]
+dev = [
+    "mypy>=1.13",
+    "poethepoet>=0.49,<1",
+    "pre-commit>=4,<5",
+    "pytest>=8",
+    "pytest-cov>=6",
+    "types-jsonschema>=4",
+    "ruff>=0.8",
+]
+
+site-mkdocs = [
+    "mkdocs==1.6.1",
+    "mkdocs-material==9.7.7",
+]
+site-zensical = [
+    "zensical==0.1.1",
+]
+
+[tool.uv]
+package = false
+default-groups = ["validate", "dev"]
+
+[tool.poe.tasks]
+install = [{ cmd = "uv sync --all-groups" }, { cmd = "pre-commit install" }]
+test = "pytest"
+
+[tool.poe.tasks.check]
+sequence = [
+    "uv lock --locked",
+    "ruff check scripts tests",
+    "ruff format --check scripts tests",
+    "mypy --strict scripts/okfprofile",
+    "mypy scripts/validate_profile.py scripts/new_concept.py scripts/renumber.py scripts/build_indexes.py scripts/scan.py scripts/check_licences.py scripts/audit.py scripts/export_requirements.py scripts/write_revision.py scripts/stale_report.py scripts/check_config.py scripts/build_bundle.py scripts/release.py scripts/init_library.py scripts/setup_repo.py scripts/ci_validate.py scripts/report_issue.py scripts/check_skills.py scripts/link_skills.py scripts/build_site.py scripts/check_site.py tests",
+    "python scripts/validate_profile.py",
+    "python scripts/build_indexes.py --check",
+    "python scripts/export_requirements.py --check",
+    "python scripts/check_skills.py",
+]
+default_item_type = "cmd"
+
+[tool.poe.tasks.export]
+help = "Write the hash-locked requirements/*.txt (validate, dev, site-mkdocs, site-zensical) from uv.lock"
+cmd = "python scripts/export_requirements.py"
+
+[tool.poe.tasks.check-skills]
+help = "Check .agents/skills against the Agent Skills format and the profile (no concept type, prefix or tag named)"
+cmd = "python scripts/check_skills.py"
+
+[tool.poe.tasks.link-skills]
+help = "Optional adapter: copy .agents/skills into .claude/skills in your own checkout (git-ignored)"
+cmd = "python scripts/link_skills.py"
+
+[tool.poe.tasks.docs]
+help = "Serve the site with live reload (MkDocs; needs the site-mkdocs group)"
+cmd = "python -m mkdocs serve"
+env = { NO_MKDOCS_2_WARNING = "true" }
+
+[tool.poe.tasks.docs-build]
+help = "Build the site with MkDocs, strict (blocking build) into site/"
+cmd = "python scripts/build_site.py mkdocs"
+
+[tool.poe.tasks.docs-zensical]
+help = "Build the site with Zensical (non-blocking build) into site-zensical/, then compare its pages with the MkDocs build"
+sequence = [
+    "python scripts/build_site.py zensical",
+    "python scripts/check_site.py --site site-zensical --against site",
+]
+default_item_type = "cmd"
+
+[tool.poe.tasks.docs-linkcheck]
+help = "Check the built site's links and fragments offline with lychee, if installed"
+cmd = "python scripts/check_site.py --site ${site} --linkcheck"
+args = [{ name = "site", options = ["--site"], default = "site" }]
+
+[tool.poe.tasks.docs-manifest]
+help = "Write release.json (tag and commit) into the built site (FR8.3)"
+cmd = "python scripts/check_site.py --site site --manifest ${tag} --commit ${commit}"
+args = [{ name = "tag", positional = true, required = true }, { name = "commit", positional = true, required = true }]
+
+[tool.poe.tasks.site-deploy-check]
+help = "Print true if a run on this tag publishes the site (stable v1.0.0 or later and library.site_url set), else false"
+cmd = "python scripts/check_site.py --deploy-ref ${ref}"
+args = [{ name = "ref", positional = true, required = true }]
+
+[tool.poe.tasks.scan]
+help = "Scan files changed since HEAD for confidentiality markers and secret-shaped strings (add --all for every tracked file)"
+cmd = "python scripts/scan.py"
+
+[tool.poe.tasks.licences]
+help = "Check the licences of the locked, installed packages against the allowlist in constraints.md"
+cmd = "python scripts/check_licences.py"
+
+[tool.poe.tasks.audit]
+help = "Audit the locked dependencies for known vulnerabilities (needs network and uvx)"
+cmd = "python scripts/audit.py"
+
+[tool.poe.tasks.stale]
+help = "List concepts past their review date (add --check-since <tag> to list changes with no revision line)"
+cmd = "python scripts/stale_report.py"
+
+[tool.poe.tasks.check-config]
+help = "Check workflows, issue forms and Dependabot configuration against their published schemas (needs uvx and network)"
+cmd = "python scripts/check_config.py"
+
+[tool.poe.tasks.bundle]
+help = "Build the release archive, checksum and manifest into dist/ from the files in git at HEAD"
+cmd = "python scripts/build_bundle.py --tag ${tag}"
+args = [{ name = "tag", positional = true, help = "release tag, for example v0.2.0" }]
+
+[tool.poe.tasks.release]
+help = "Cut a release: revision-line gate, validation, archive and (git-local) an annotated tag that records its digest"
+cmd = "python scripts/release.py ${tag}"
+args = [{ name = "tag", positional = true, help = "release tag, for example v0.2.0" }]
+
+[tool.poe.tasks.init]
+help = "Turn a copy of the template into a library: asks the questions of W-01 step 3, or reads --answers FILE"
+cmd = "python scripts/init_library.py"
+
+[tool.poe.tasks.setup-repo]
+help = "Configure the GitHub repository (platform github): labels, merge methods, permissions, ruleset; --dry-run, --check, --promote"
+cmd = "python scripts/setup_repo.py"
+
+[tool.poe.tasks.selftest]
+help = "Instantiate the template for each platform in a scratch folder and check the result (W-10)"
+cmd = "pytest tests/template/test_instantiation.py --no-cov"
+
+[tool.poe.tasks.ci-validate-event]
+help = "Validate as the CI event calls for: base-branch tooling for a pull request, a whole-tree check after a push"
+cmd = "python scripts/ci_validate.py"
+
+[tool.poe.tasks.report-issue]
+help = "Open, update or close the one tracking issue for a label (--label L --title T --body-file F, or --close)"
+cmd = "python scripts/report_issue.py"
+
+[tool.poe.tasks.perf]
+help = "Time the validation of a generated 600-concept bundle against the 10 s limit"
+cmd = "pytest tests/template/test_speed.py --no-cov"
+env = { OKF_PERF = "1" }
+
+[tool.poe.tasks.hooks]
+help = "Run every pre-commit hook on every file"
+cmd = "pre-commit run --all-files"
+
+[tool.poe.tasks.renumber]
+help = "Give a concept whose uid clashes with another the next free number (renumber <concept-id>)"
+cmd = "python scripts/renumber.py"
+
+[tool.poe.tasks.revision]
+help = "Record every change merged since the last revision commit in the concepts it touched, and commit the result"
+cmd = "python scripts/write_revision.py --commit"
+
+[tool.poe.tasks.ci-validate]
+help = "Validate this working tree against a base branch, using the base branch's own tooling and profile"
+cmd = "python scripts/validate_profile.py --tooling-from ${base} --base ${base}"
+args = [{ name = "base", default = "origin/main", help = "base branch or commit" }]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+extend-exclude = ["scripts/vendor"]
+
+[tool.ruff.lint]
+select = ["YTT", "S", "B", "A", "C4", "T10", "SIM", "I", "C90", "E", "W", "F", "PGH", "UP", "RUF", "TRY"]
+ignore = ["E501", "E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+mypy_path = "scripts:tests/template"
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts", "tests/template"]
+addopts = ""
+
+[tool.coverage.run]
+source = ["scripts/okfprofile"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true

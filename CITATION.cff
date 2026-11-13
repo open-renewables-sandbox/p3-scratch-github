@@ -1,0 +1,8 @@
+cff-version: 1.2.0
+message: If you use this library, please cite it using these metadata.
+title: "P3 scratch library"
+abstract: "Synthetic library for the P3 site and release rehearsals."
+authors:
+  - name: "Scratch Maintainer"
+license: CC-BY-4.0
+repository-code: "https://github.com/open-renewables-sandbox/p3-scratch-github"
