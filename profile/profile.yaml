@@ -90,7 +90,7 @@ status:
 rules:
   provenance: revision-history
   revision_write: post-merge
-  revision_token: github-token
+  revision_token: github-app
   write_okf_verified: false
   agent_label: agent-drafted
   full_review_label: full-review
