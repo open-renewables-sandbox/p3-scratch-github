@@ -9,7 +9,7 @@ library:
   name: p3-scratch-github
   title: "P3 scratch library"
   repository: "https://github.com/open-renewables-sandbox/p3-scratch-github"
-  site_url: ""
+  site_url: "https://open-renewables-sandbox.github.io/p3-scratch-github/"
 platform: github
 maintainers:
   richard-gledhill:
