@@ -27,6 +27,7 @@ This item shows how a concept is written to the profile. The description is plai
 <!-- Maintained by CI. Do not edit. -->
 
 - 2026-11-13 · author @noreply · self-approved (non-owner) · PR none
+- 2026-11-13 · author @richard-gledhill · self-approved (owner) · PR #9
 
 
 [^1]: Open Knowledge Format specification, <https://github.com/GoogleCloudPlatform/open-knowledge-format>.
