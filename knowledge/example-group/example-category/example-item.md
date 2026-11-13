@@ -2,7 +2,7 @@
 type: Item
 uid: ITM-0001
 title: Example item
-description: A worked example of an Item concept, showing every declared section.
+description: A worked example of an Item concept, showing every declared section (edited).
 tags: [group:example-group, category:example-category]
 status: draft
 ---

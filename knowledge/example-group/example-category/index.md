@@ -3,4 +3,4 @@
 
 ## Concepts
 
-- [Example item](example-item.md) — A worked example of an Item concept, showing every declared section. · draft · machine-confirmed
+- [Example item](example-item.md) — A worked example of an Item concept, showing every declared section (edited). · draft · machine-confirmed
