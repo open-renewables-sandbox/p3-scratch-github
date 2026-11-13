@@ -22,3 +22,5 @@ Source: [Open Knowledge Format specification](https://github.com/GoogleCloudPlat
 
 <!-- Maintained by CI. Do not edit. -->
 
+- 2026-11-13 · author @noreply · self-approved (non-owner) · PR none
+
