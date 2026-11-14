@@ -14,6 +14,8 @@ uv run poe test
 
 Create a concept with `uv run python scripts/new_concept.py <Type> <path>`.
 
+The site is built with Zensical (`site.generator` in `profile/profile.yaml`): `uv sync --group site-zensical`, then `uv run poe docs-build`, or `uv run poe docs` to serve it. The other generator builds alongside it in CI as a non-blocking comparison.
+
 ## Licences
 
 | Path | Licence |

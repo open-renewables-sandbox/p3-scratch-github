@@ -24,6 +24,7 @@ from okfprofile.registry import Registry, load_registry, save_registry
 from okfprofile.revision_writer import reset_history
 
 PLATFORMS = ("github", "git-local")
+SITE_GENERATORS = ("mkdocs", "zensical")
 CODE_LICENCES = ("Apache-2.0", "MIT", "proprietary")
 CONTENT_LICENCES = ("CC-BY-4.0", "CC-BY-SA-4.0", "CC0-1.0", "proprietary")
 TEMPLATE_LOGIN = "richard-gledhill"
@@ -100,6 +101,7 @@ class Answers:
         repository: Repository URL (``github``); empty if there is none.
         keep_examples: Keep the example concept.
         keep_tests: Keep ``tests/template`` and the template's own workflow.
+        site_generator: ``mkdocs`` (default) or ``zensical``: the blocking site builder.
         year: Copyright year.
     """
 
@@ -116,6 +118,7 @@ class Answers:
     repository: str = ""
     keep_examples: bool = True
     keep_tests: bool = False
+    site_generator: str = "mkdocs"
     year: int = field(default_factory=lambda: date.today().year)
 
     @property
@@ -162,6 +165,10 @@ def parse_answers(data: Any) -> Answers:
         (code in CODE_LICENCES, f"code_licence must be one of {', '.join(CODE_LICENCES)}"),
         (isinstance(data.get("keep_examples", True), bool), "keep_examples must be true or false"),
         (isinstance(data.get("keep_tests", False), bool), "keep_tests must be true or false"),
+        (
+            str(data.get("site_generator", "mkdocs")) in SITE_GENERATORS,
+            f"site_generator must be one of {', '.join(SITE_GENERATORS)}",
+        ),
         (isinstance(data.get("year", 2000), int), "year must be a number"),
     ]
     problems += [message for ok, message in checks if not ok]
@@ -181,6 +188,7 @@ def parse_answers(data: Any) -> Answers:
         repository=text["repository"].rstrip("/"),
         keep_examples=bool(data.get("keep_examples", True)),
         keep_tests=bool(data.get("keep_tests", False)),
+        site_generator=str(data.get("site_generator", "mkdocs")),
         year=int(data.get("year", date.today().year)),
     )
 
@@ -231,7 +239,8 @@ def rewrite_profile(text: str, a: Answers) -> str:
     site = _sub_once(site, r"^platform: .*$", f"platform: {a.platform}", "platform")
     maintainers = f"maintainers:\n  {a.login}:\n    emails: [{quote(a.email)}]\n    role: maintainer"
     site = _sub_once(site, r"^maintainers:.*(?:\n[ \t]+\S.*)*", maintainers, "maintainers")
-    return _sub_once(site, r"^  revision_token: \S+", "  revision_token: github-token", "rules.revision_token")
+    site = _sub_once(site, r"^  revision_token: \S+", "  revision_token: github-token", "rules.revision_token")
+    return _sub_once(site, r"^  generator: \S+", f"  generator: {a.site_generator}", "site.generator")
 
 
 def rewrite_pyproject(text: str, a: Answers, drop_coverage_gate: bool) -> str:
@@ -333,12 +342,21 @@ def readme_text(a: Answers) -> str:
         "## Working on the library\n\n"
         "```bash\nuv sync --all-groups\nuv run poe check\nuv run poe test\n```\n\n"
         "Create a concept with `uv run python scripts/new_concept.py <Type> <path>`.\n\n"
+        f"The site is built with {a.site_generator.title()} (`site.generator` in `profile/profile.yaml`): "
+        f"`uv sync --group site-{a.site_generator}`, then `uv run poe docs-build`, or `uv run poe docs` to serve it. "
+        "The other generator builds alongside it in CI as a non-blocking comparison.\n\n"
         "## Licences\n\n"
         "| Path | Licence |\n| --- | --- |\n"
         f"| `knowledge/` | {a.content_licence}: see `LICENSE-content` |\n"
         f"| Code and changes by the owner | {code}: see `LICENSE` |\n"
         "| Files inherited from the template | Apache-2.0: see `NOTICE` and, if the code licence differs, `LICENSE-template` |\n"
     )
+
+
+def governance_text(text: str, a: Answers) -> str:
+    """Fill the two placeholders of ``GOVERNANCE.md``: the maintainer and the contact for security reports."""
+    who = f"{a.maintainer_name or a.login} (@{a.login})" if a.platform == "github" else a.maintainer_name or a.login
+    return text.replace("{maintainer}", who).replace("{contact}", a.email)
 
 
 def citation_text(a: Answers) -> str:
@@ -447,6 +465,9 @@ def _rewrite_files(root: Path, a: Answers, result: Result, profile_text: str, te
     _update(root, "README.md", readme_text(a), result)
     _update(root, "CITATION.cff", citation_text(a), result)
     _update(root, "DECISIONS.md", decisions_text(a, template_version), result)
+    governance = root / "GOVERNANCE.md"
+    if governance.is_file():
+        _update(root, "GOVERNANCE.md", governance_text(_read(governance), a), result)
     agents = root / "AGENTS.md"
     if agents.is_file():
         _update(root, "AGENTS.md", strip_template_block(_read(agents)), result)
@@ -505,7 +526,7 @@ def leftover_markers(root: Path) -> list[str]:
     """Template identifiers that remain in an instantiated library, outside the places that may name the template.
 
     The search covers text files only and skips ``NOTICE``, ``LICENSE-template``, ``DECISIONS.md``, ``scripts/``,
-    ``tests/``, ``.git/`` and virtual environments.
+    ``tests/``, ``.git/``, ``.idea/`` (an IDE's own files, never committed) and virtual environments.
 
     Args:
         root: The library's root folder.
@@ -517,7 +538,7 @@ def leftover_markers(root: Path) -> list[str]:
     for path in sorted(root.rglob("*")):
         relative = path.relative_to(root).as_posix()
         skip = (
-            relative.startswith((".git/", ".venv"))
+            relative.startswith((".git/", ".idea/", ".venv"))
             or "/.venv" in relative
             or any(relative == a or relative.startswith(a) for a in MARKER_ALLOWED)
         )
